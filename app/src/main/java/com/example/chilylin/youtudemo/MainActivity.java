@@ -21,14 +21,15 @@ import com.qcloud.qcloudfr_android_sdk.sign.QcloudFrSign;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.ArrayList;
 
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
 	private Uri mFirstPhotoUri;
 	private Uri mSecondPhotoUri;
+	private String mYouTuPersonID = "YouTuTestPersonNo1";
+	private String mYouTuGroupID = "YouTuTestGroupNo1";
 
 	private static String APPID = "";
 	private static String SECRETID = "";
@@ -37,6 +38,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
 	private static int EXPIRED_SECONDS = 2592000;
 
 	private Context mContext = null;
+
+	private QcloudFrSDK mQCloudFrSDK;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +50,13 @@ public class MainActivity extends Activity implements View.OnClickListener {
 		findViewById(R.id.btn_first_photo).setOnClickListener(this);
 		findViewById(R.id.btn_second_photo).setOnClickListener(this);
 		findViewById(R.id.btn_compare).setOnClickListener(this);
+		findViewById(R.id.btn_face_verify).setOnClickListener(this);
+
+		StringBuffer appSign = new StringBuffer();
+		QcloudFrSign.appSign(APPID, SECRETID, SECRETKEY, System.currentTimeMillis() / 1000 + EXPIRED_SECONDS,
+				"", appSign);
+
+		mQCloudFrSDK = new QcloudFrSDK(APPID, appSign.toString());
 	}
 
 
@@ -70,9 +80,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
 			startActivityForResult(intent, 200);
 		}
 		else if (v.getId() == R.id.btn_compare) {
-
-			checkTwoPhotos();
-
+			faceCompare();
+		}
+		else if (v.getId() == R.id.btn_face_verify) {
+			faceVerify();
 		}
 	}
 
@@ -93,7 +104,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 	}
 
 
-	private void checkTwoPhotos() {
+	private void faceCompare() {
 		if (mFirstPhotoUri == null || mSecondPhotoUri == null) {
 			mFirstPhotoUri = getOutputMediaFileUri(FIRST_IMAGE);
 			mSecondPhotoUri = getOutputMediaFileUri(SECOND_IMAGE);
@@ -101,24 +112,117 @@ public class MainActivity extends Activity implements View.OnClickListener {
 			((ImageView)findViewById(R.id.first_image)).setImageURI(mFirstPhotoUri);
 			((ImageView)findViewById(R.id.second_image)).setImageURI(mSecondPhotoUri);
 		}
-		new checkTwoPhotosTask().execute();
+
+		new faceCompareTask().execute();
 	}
 
+	private void faceVerify() {
+		if (mFirstPhotoUri == null || mSecondPhotoUri == null) {
+			mFirstPhotoUri = getOutputMediaFileUri(FIRST_IMAGE);
+			mSecondPhotoUri = getOutputMediaFileUri(SECOND_IMAGE);
 
-	class checkTwoPhotosTask extends AsyncTask<Void, Void, Boolean>  	{
+			((ImageView)findViewById(R.id.first_image)).setImageURI(mFirstPhotoUri);
+			((ImageView)findViewById(R.id.second_image)).setImageURI(mSecondPhotoUri);
+		}
+
+		new newPersonTask().execute();
+	}
+
+	class newPersonTask extends AsyncTask<Void, Void, Boolean> {
 		String result = "";
 		ProgressDialog mProgressDialog;
 
 		@Override
 		protected Boolean doInBackground(Void... params) {
-			StringBuffer appSign = new StringBuffer();
-			QcloudFrSign.appSign(APPID, SECRETID, SECRETKEY, System.currentTimeMillis() / 1000 + EXPIRED_SECONDS,
-					"", appSign);
-
-			QcloudFrSDK sdk = new QcloudFrSDK(APPID, appSign.toString());
 
 			try {
-				JSONObject response = sdk.FaceCompare(mFirstPhotoUri.getEncodedPath(), mSecondPhotoUri.getEncodedPath());
+				ArrayList<String> groupID = new ArrayList<String>() ;
+				groupID.add(mYouTuGroupID);
+				JSONObject response = mQCloudFrSDK.NewPerson(mFirstPhotoUri.getEncodedPath(), mYouTuPersonID, groupID);
+				Log.i("YouTuDemo", "new person response:" + response.toString());
+
+				result = response.toString();
+				return true;
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+				result = "new person failed";
+			}
+
+			return false;
+		}
+
+		@Override
+		protected void onPostExecute(Boolean aBoolean) {
+			super.onPostExecute(aBoolean);
+
+			mProgressDialog.dismiss();
+			TextView respTxtView = (TextView)findViewById(R.id.txt_compare_result);
+			respTxtView.setText(result);
+
+			new faceVerifyTask().execute();
+		}
+
+		@Override
+		protected void onPreExecute() {
+			super.onPreExecute();
+			mProgressDialog = ProgressDialog.show(mContext, "", "正在创建原图，请稍后");
+			TextView respTxtView = (TextView)findViewById(R.id.txt_compare_result);
+			respTxtView.setText("");
+		}
+	}
+
+	class faceVerifyTask extends AsyncTask<Void, Void, Boolean> {
+		String result = "";
+		ProgressDialog mProgressDialog;
+
+		@Override
+		protected Boolean doInBackground(Void... params) {
+
+			try {
+				ArrayList<String> groupID = new ArrayList<String>() ;
+				groupID.add(mYouTuGroupID);
+				JSONObject response = mQCloudFrSDK.FaceVerify(mSecondPhotoUri.getEncodedPath(), mYouTuPersonID);
+				Log.i("YouTuDemo", "face verify response:" + response.toString());
+
+				result = response.toString();
+				return true;
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+				result = "face verify failed";
+			}
+
+			return false;
+		}
+
+		@Override
+		protected void onPostExecute(Boolean aBoolean) {
+			super.onPostExecute(aBoolean);
+
+			mProgressDialog.dismiss();
+			TextView respTxtView = (TextView)findViewById(R.id.txt_compare_result);
+			respTxtView.setText(result);
+		}
+
+		@Override
+		protected void onPreExecute() {
+			super.onPreExecute();
+			mProgressDialog = ProgressDialog.show(mContext, "", "正在识别，请稍后");
+			TextView respTxtView = (TextView)findViewById(R.id.txt_compare_result);
+			respTxtView.setText("");
+		}
+	}
+
+
+	class faceCompareTask extends AsyncTask<Void, Void, Boolean>  	{
+		String result = "";
+		ProgressDialog mProgressDialog;
+
+		@Override
+		protected Boolean doInBackground(Void... params) {
+			try {
+				JSONObject response = mQCloudFrSDK.FaceCompare(mFirstPhotoUri.getEncodedPath(), mSecondPhotoUri.getEncodedPath());
 				Log.i("YouTuDemo", "compare response:" + response.toString());
 
 				result = response.toString();

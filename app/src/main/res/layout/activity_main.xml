@@ -57,9 +57,10 @@
         android:layout_height="wrap_content"
         android:text="Compare"
         android:id="@+id/btn_compare"
+        android:layout_marginTop="60dp"
         android:layout_below="@+id/btn_first_photo"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="60dp"/>
+        android:layout_alignRight="@+id/btn_first_photo"
+        android:layout_alignEnd="@+id/btn_first_photo"/>
 
     <TextView
         android:layout_width="wrap_content"
@@ -71,5 +72,16 @@
         android:layout_toEndOf="@+id/btn_first_photo"
         android:layout_alignLeft="@+id/btn_first_photo"
         android:layout_alignStart="@+id/btn_first_photo"/>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Verify"
+        android:id="@+id/btn_face_verify"
+        android:layout_above="@+id/txt_compare_result"
+        android:layout_alignRight="@+id/btn_second_photo"
+        android:layout_alignEnd="@+id/btn_second_photo"
+        android:layout_marginRight="45dp"
+        android:layout_marginEnd="45dp"/>
 
 </RelativeLayout>
